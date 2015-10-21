@@ -126,17 +126,20 @@ Configuration::Configuration(int argc, const char *argv[])
         ("list_devices",       po::value(&m_listDevices)      ->default_value(false),         "display list of CUDA devices and exit")
         ("parallel_sequences", po::value(&m_parallelSequences)->default_value(1),             "sets the number of parallel calculated sequences")
         ("random_seed",        po::value(&m_randomSeed)       ->default_value(0u),            "sets the seed for the random number generator (0 = auto)")
-        ;
+    ;
 
     po::options_description feedForwardOptions("Forward pass options");
     feedForwardOptions.add_options()
-        ("ff_output_format", po::value(&feedForwardFormatString)->default_value("single_csv"), "output format for output layer activations (htk, csv or single_csv)")
+        ("ff_output_format", po::value(&feedForwardFormatString)->default_value("single_csv"), "output format for output layer activations (htk, csv, kaldi or single_csv)")
         ("ff_output_file", po::value(&m_feedForwardOutputFile)->default_value("ff_output.csv"), "sets the name of the output file / directory in forward pass mode (directory for htk / csv modes)")
         ("ff_output_kind", po::value(&m_outputFeatureKind)->default_value(9), "sets the parameter kind in case of HTK output (9: user, consult HTK book for details)")
         ("feature_period", po::value(&m_featurePeriod)->default_value(10), "sets the feature period in case of HTK output (in seconds)")
         ("ff_input_file",  po::value(&feedForwardInputFileList),                                  "sets the name(s) of the input file(s) in forward pass mode")
         ("revert_std",     po::value(&m_revertStd)->default_value(true), "if regression is performed, unstandardize the output activations so that features are on the original targets' scale")
-        ;
+        ("dump_tmp_outputs",   po::value(&m_dump_tmp_outputs)  ->default_value(false),         "whether to dump activations of hidden layers")
+        ("log_outputs",        po::value(&m_log_outputs)        ->default_value(false),         "apply logarithm to the nn forward output")
+        ("sub_priors",         po::value(&m_sub_priors)         ->default_value(false),         "subtract log priors from log posters")
+    ;
 
     po::options_description trainingOptions("Training options");
     trainingOptions.add_options()
@@ -292,6 +295,8 @@ Configuration::Configuration(int argc, const char *argv[])
         m_feedForwardFormat = FORMAT_CSV;
     else if (feedForwardFormatString == "htk")
         m_feedForwardFormat = FORMAT_HTK;
+    else if (feedForwardFormatString == "kaldi")
+        m_feedForwardFormat = FORMAT_KALDI;   
     else {
         std::cout << "ERROR: Invalid feedforward format string. Possible values: single_csv, csv, htk." << std::endl;
         exit(1);
@@ -406,6 +411,21 @@ bool Configuration::shuffleSequences() const
 bool Configuration::useCuda() const
 {
     return m_useCuda;
+}
+
+bool Configuration::dumpTmpOutputs() const
+{
+    return m_dump_tmp_outputs;
+}
+
+bool Configuration::logOutputs() const
+{
+    return m_log_outputs;
+}
+
+bool Configuration::subPriors() const
+{
+    return m_sub_priors;
 }
 
 bool Configuration::listDevices() const

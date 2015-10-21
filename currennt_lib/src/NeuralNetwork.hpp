@@ -47,9 +47,12 @@ template <typename TDevice>
 class NeuralNetwork
 {
 private:
-    std::vector<boost::shared_ptr<layers::Layer<TDevice> > > m_layers;
+
 
 public:
+    std::vector<boost::shared_ptr<layers::Layer<TDevice> > > m_layers;
+    std::vector<double> m_priors;
+    
     /**
      * Creates the neural network from the process configuration
      *
@@ -134,6 +137,12 @@ public:
      * @param jsonDoc The JSON document
      */
     void exportWeights(const helpers::JsonDocument& jsonDoc) const;
+    
+    /**
+     * Stores the relative priors in a JSON tree
+     * @param jsonDoc
+     */
+    void exportPriors(const helpers::JsonDocument& jsonDoc) const;
 
     /**
      * Returns the outputs of the processed fraction
@@ -144,6 +153,7 @@ public:
      * @return Outputs of the processed fraction
      */
     std::vector<std::vector<std::vector<real_t> > > getOutputs();
+    std::vector<std::vector<std::vector<real_t> > > getMyOutputs();
 };
 
 

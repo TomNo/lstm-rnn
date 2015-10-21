@@ -47,7 +47,8 @@ public:
     enum feedforwardformat_type_t {
         FORMAT_SINGLE_CSV,
         FORMAT_CSV,
-        FORMAT_HTK
+        FORMAT_HTK,
+        FORMAT_KALDI
     };
 
 private:
@@ -63,6 +64,9 @@ private:
     bool m_shuffleSequences;
     bool m_autosave;
     bool m_autosaveBest;
+    bool m_dump_tmp_outputs;
+    bool m_log_outputs;
+    bool m_sub_priors;
 
     optimizer_type_t         m_optimizer;
     distribution_type_t      m_weightsDistribution;
@@ -184,6 +188,12 @@ public:
      * @return True if CUDA shall be used
      */
     bool useCuda() const;
+    
+    bool dumpTmpOutputs() const;
+    
+    bool logOutputs() const;
+    
+    bool subPriors() const;
 
     bool listDevices() const;
 

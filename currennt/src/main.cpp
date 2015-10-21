@@ -8,7 +8,7 @@
  *
  * CURRENNT is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
+ * the Free Software Foundationo either version 3 of the License, or
  * (at your option) any later version.
  *
  * CURRENNT is distributed in the hope that it will be useful,
@@ -48,6 +48,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <iomanip>
+
 
 
 void swap32 (uint32_t *p)
@@ -321,7 +322,7 @@ int trainerMain(const Configuration &config)
             if (config.feedForwardFormat() == Configuration::FORMAT_SINGLE_CSV) {
                 // open the output file
                 std::ofstream file(config.feedForwardOutputFile().c_str(), std::ofstream::out);
-
+                std::ofstream tmp_outputs_file("tmp_outputs", std::ofstream::out);
                 // process all data set fractions
                 int fracIdx = 0;
                 boost::shared_ptr<data_sets::DataSetFraction> frac;
@@ -333,7 +334,33 @@ int trainerMain(const Configuration &config)
                     neuralNetwork.loadSequences(*frac);
                     neuralNetwork.computeForwardPass();
                     std::vector<std::vector<std::vector<real_t> > > outputs = neuralNetwork.getOutputs();
+                    if (config.dumpTmpOutputs()){
+                        std::vector<std::vector<std::vector<real_t> > > layer_outputs = neuralNetwork.getMyOutputs();
+                        // write the outputs in the file
+                        for (int psIdx = 0; psIdx < (int)layer_outputs.size(); ++psIdx) {
+                            // write the sequence tag
+                            tmp_outputs_file << frac->seqInfo(psIdx).seqTag;
 
+                            // write the patterns
+                            for (int timestep = 0; timestep < (int)layer_outputs[psIdx].size(); ++timestep) {
+                                for (int outputIdx = 0; outputIdx < (int)layer_outputs[psIdx][timestep].size(); ++outputIdx) {
+                                    real_t v;
+                                    if (timestep < layer_outputs[psIdx].size() - output_lag)
+                                        v = layer_outputs[psIdx][timestep + output_lag][outputIdx];
+                                    else
+                                        v = layer_outputs[psIdx][layer_outputs[psIdx].size() - 1][outputIdx];
+//                                    if (unstandardize) {
+//                                        v *= outputStdevs[outputIdx];
+//                                        v += outputMeans[outputIdx];
+//                                    }
+                                    tmp_outputs_file << ';' << v; 
+                                }
+                            }
+
+                            tmp_outputs_file << '\n';
+                        }
+                        tmp_outputs_file.close();
+                    }
                     // write the outputs in the file
                     for (int psIdx = 0; psIdx < (int)outputs.size(); ++psIdx) {
                         // write the sequence tag
@@ -354,7 +381,7 @@ int trainerMain(const Configuration &config)
                                 file << ';' << v; 
                             }
                         }
-
+                        
                         file << '\n';
                     }
 
@@ -484,6 +511,67 @@ int trainerMain(const Configuration &config)
                     printf(" done.\n");
                 }
             }
+            else if (config.feedForwardFormat() == Configuration::FORMAT_KALDI) {
+                // open the output file
+                std::ofstream file(config.feedForwardOutputFile().c_str(), std::ofstream::out);
+                // process all data set fractions
+                int fracIdx = 0;
+                boost::shared_ptr<data_sets::DataSetFraction> frac;
+                while (((frac = feedForwardSet->getNextFraction()))) {
+                    printf("Computing outputs for data fraction %d...", ++fracIdx);
+                    fflush(stdout);
+
+                    // compute the forward pass for the current data fraction and extract the outputs
+                    neuralNetwork.loadSequences(*frac);
+                    neuralNetwork.computeForwardPass();
+                    std::vector<std::vector<std::vector<real_t> > > outputs = neuralNetwork.getOutputs();
+                    // write the outputs in the file
+                    for (int psIdx = 0; psIdx < (int)outputs.size(); ++psIdx) {
+                        // write the sequence tag
+                        file << frac->seqInfo(psIdx).seqTag << "  [\n";
+
+                        // write the patterns
+                        for (int timestep = 0; timestep < (int)outputs[psIdx].size(); ++timestep) {
+                            for (int outputIdx = 0; outputIdx < (int)outputs[psIdx][timestep].size(); ++outputIdx) {
+                                real_t v;
+                                if (timestep < outputs[psIdx].size() - output_lag)
+                                    v = outputs[psIdx][timestep + output_lag][outputIdx];
+                                else
+                                    v = outputs[psIdx][outputs[psIdx].size() - 1][outputIdx];
+                                if (unstandardize) {
+                                    v *= outputStdevs[outputIdx];
+                                    v += outputMeans[outputIdx];
+                                }
+                                if(config.logOutputs())
+                                {
+                                    v = log(v);
+//                                    v *= 100;
+                                }
+                                
+                                if(config.subPriors())
+                                {
+                                    v -= neuralNetwork.m_priors[outputIdx];
+                                }
+                                
+                                file << std::setprecision(12) << v << " "; 
+                            }
+                            if (timestep +1 == (int)outputs[psIdx].size())
+                            {
+                                file << "]\n";
+                            }
+                            else
+                            {
+                                file << "\n";
+                            }
+                        }
+                    }
+
+                    printf(" done.\n");
+                }
+
+                // close the file
+                file.close();
+            } // format: FORMAT_KALDI
             if (feedForwardSet != boost::shared_ptr<data_sets::DataSet>()) 
                 std::cout << "Removing cache file: " << feedForwardSet->cacheFileName() << std::endl;
             boost::filesystem::remove(feedForwardSet->cacheFileName());
@@ -503,7 +591,7 @@ int main(int argc, const char *argv[])
     // load the configuration
     Configuration config(argc, argv);
 
-    // run the execution device specific main function
+    // run the executieon device specific main function
     if (config.useCuda()) {
         int count;
         cudaError_t err;
@@ -685,6 +773,7 @@ void saveNetwork(const NeuralNetwork<TDevice> &nn, const std::string &filename)
     jsonDoc.SetObject();
     nn.exportLayers (&jsonDoc);
     nn.exportWeights(&jsonDoc);
+    nn.exportPriors(&jsonDoc);
 
     FILE *file = fopen(filename.c_str(), "w");
     if (!file)

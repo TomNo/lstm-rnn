@@ -43,6 +43,17 @@ NeuralNetwork<TDevice>::NeuralNetwork(const helpers::JsonDocument &jsonDoc, int 
         if (!jsonDoc->HasMember("layers"))
             throw std::runtime_error("Missing section 'layers'");
         rapidjson::Value &layersSection  = (*jsonDoc)["layers"];
+        
+        if (!jsonDoc->HasMember("priors"))
+            throw std::runtime_error("Missing section 'priors'");
+
+        rapidjson::Value &priorsSec  = (*jsonDoc)["priors"];
+        if (!priorsSec.IsArray())
+            throw std::runtime_error("Section 'priors' is not an array");
+        
+        for(rapidjson::Value::ValueIterator priorPtr = priorsSec.Begin(); priorPtr != priorsSec.End(); priorPtr++) {
+            m_priors.push_back(priorPtr->GetDouble());
+        }
 
         if (!layersSection.IsArray())
             throw std::runtime_error("Section 'layers' is not an array");
@@ -211,6 +222,28 @@ void NeuralNetwork<TDevice>::exportLayers(const helpers::JsonDocument& jsonDoc) 
 }
 
 template <typename TDevice>
+void NeuralNetwork<TDevice>::exportPriors(const helpers::JsonDocument& jsonDoc) const
+{
+//    if (!jsonDoc->IsObject())
+//        throw std::runtime_error("JSON document root must be an object");
+//
+//    // create the layers array
+//    rapidjson::Value layersArray(rapidjson::kArrayType);
+//
+//    // create the layer objects
+//    for (size_t i = 0; i < m_layers.size(); ++i)
+//        m_layers[i]->exportLayer(&layersArray, &jsonDoc->GetAllocator());
+//
+//    // if the section already exists, we delete it first
+//    if (jsonDoc->HasMember("layers"))
+//        jsonDoc->RemoveMember("layers");
+//
+//    // add the section to the JSON document
+//    jsonDoc->AddMember("layers", layersArray, jsonDoc->GetAllocator());
+    return;
+}
+
+template <typename TDevice>
 void NeuralNetwork<TDevice>::exportWeights(const helpers::JsonDocument& jsonDoc) const
 {
     if (!jsonDoc->IsObject())
@@ -259,6 +292,66 @@ std::vector<std::vector<std::vector<real_t> > > NeuralNetwork<TDevice>::getOutpu
     }
 
     return outputs;
+}
+
+template <typename TDevice>
+std::vector<std::vector<std::vector<real_t> > > NeuralNetwork<TDevice>::getMyOutputs()
+{
+    
+    std::vector<std::vector<std::vector<real_t> > > outputs;
+  
+    for(int i=1;i<m_layers.size()-2;i++)
+    {
+        layers::TrainableLayer<TDevice> &ol = static_cast<layers::TrainableLayer<TDevice>&>(*m_layers[i]);
+        for (int patIdx = 0; patIdx < (int)ol.patTypes().size(); ++patIdx) {
+            switch (ol.patTypes()[patIdx]) {
+            case PATTYPE_FIRST:
+                outputs.resize(outputs.size() + 1);
+
+            case PATTYPE_NORMAL:
+            case PATTYPE_LAST: {{
+                Cpu::real_vector pattern(ol.outputs().begin() + patIdx * ol.size(), ol.outputs().begin() + (patIdx+1) * ol.size());
+                int psIdx = patIdx % ol.parallelSequences();
+                std::vector<real_t> a(std::vector<real_t>(pattern.begin(), pattern.end()));
+                if (i == 1){
+                    outputs[psIdx].push_back(a);
+                }
+                else
+                {
+                    std::cout << "do not work";
+//                    outputs[psIdx].insert(outputs[psIdx].end(), a.begin(), a.end());
+                }
+                
+                break;
+            }}
+
+            default:
+                break;
+            }
+        }
+    }
+    
+//    layers::TrainableLayer<TDevice> &ol1 = static_cast<layers::TrainableLayer<TDevice>&>(*m_layers[2]);
+//    std::vector<std::vector<std::vector<real_t> > > outputs2;
+//    for (int patIdx = 0; patIdx < (int)ol1.patTypes().size(); ++patIdx) {
+//        switch (ol1.patTypes()[patIdx]) {
+//        case PATTYPE_FIRST:
+//            outputs2.resize(outputs2.size() + 1);
+//
+//        case PATTYPE_NORMAL:
+//        case PATTYPE_LAST: {{
+//            Cpu::real_vector pattern(ol1.outputs().begin() + patIdx * ol1.size(), ol1.outputs().begin() + (patIdx+1) * ol1.size());
+//            int psIdx = patIdx % ol1.parallelSequences();
+//            outputs2[psIdx].push_back(std::vector<real_t>(pattern.begin(), pattern.end()));
+//            break;
+//        }}
+//
+//        default:
+//            break;
+//        }
+//    }    
+
+//    return outputs1;
 }
 
 

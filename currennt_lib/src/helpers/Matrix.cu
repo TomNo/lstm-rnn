@@ -348,7 +348,6 @@ namespace helpers {
         }
     }
 
-#if (USE_CUBLAS == 1 && THRUST_DEVICE_BACKEND == THRUST_DEVICE_BACKEND_CUDA)
     template <>
     void Matrix<Gpu>::assignProduct(const Matrix<Gpu> &a, bool transposeA, const Matrix<Gpu> &b, bool transposeB)
     {
@@ -374,7 +373,6 @@ namespace helpers {
             true
             );
     }
-#endif
 
     // explicit template instantiations
     template class Matrix<Cpu>;
