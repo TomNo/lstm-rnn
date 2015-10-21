@@ -140,7 +140,7 @@ int trainerMain(const Configuration &config)
         // trainingSet->inputPatternSize
         // trainingSet->outputPatternSize
 
-        // create the neural network
+        // create the neural netwonetDocrk
         printf("Creating the neural network... ");
         fflush(stdout);
         int inputSize = -1;
@@ -149,6 +149,11 @@ int trainerMain(const Configuration &config)
         outputSize = trainingSet->outputPatternSize();
         NeuralNetwork<TDevice> neuralNetwork(netDoc, parallelSequences, maxSeqLength, inputSize, outputSize);
 
+        if(!trainingSet->empty())
+        {
+            //save priors
+            neuralNetwork.m_priors = trainingSet->getPriors();
+        }
         if (!trainingSet->empty() && trainingSet->outputPatternSize() != neuralNetwork.postOutputLayer().size())
             throw std::runtime_error("Post output layer size != target pattern size of the training set");
         if (!validationSet->empty() && validationSet->outputPatternSize() != neuralNetwork.postOutputLayer().size())
@@ -545,13 +550,13 @@ int trainerMain(const Configuration &config)
                                 if(config.logOutputs())
                                 {
                                     v = log(v);
-//                                    v *= 100;
                                 }
                                 
                                 if(config.subPriors())
                                 {
                                     v -= neuralNetwork.m_priors[outputIdx];
                                 }
+                                v *= 100;
                                 
                                 file << std::setprecision(12) << v << " "; 
                             }

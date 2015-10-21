@@ -44,15 +44,15 @@ NeuralNetwork<TDevice>::NeuralNetwork(const helpers::JsonDocument &jsonDoc, int 
             throw std::runtime_error("Missing section 'layers'");
         rapidjson::Value &layersSection  = (*jsonDoc)["layers"];
         
-        if (!jsonDoc->HasMember("priors"))
-            throw std::runtime_error("Missing section 'priors'");
+        if (jsonDoc->HasMember("priors"))
+        {
+            rapidjson::Value &priorsSec  = (*jsonDoc)["priors"];
+            if (!priorsSec.IsArray())
+                throw std::runtime_error("Section 'priors' is not an array");
 
-        rapidjson::Value &priorsSec  = (*jsonDoc)["priors"];
-        if (!priorsSec.IsArray())
-            throw std::runtime_error("Section 'priors' is not an array");
-        
-        for(rapidjson::Value::ValueIterator priorPtr = priorsSec.Begin(); priorPtr != priorsSec.End(); priorPtr++) {
-            m_priors.push_back(priorPtr->GetDouble());
+            for(rapidjson::Value::ValueIterator priorPtr = priorsSec.Begin(); priorPtr != priorsSec.End(); priorPtr++) {
+                m_priors.push_back(priorPtr->GetDouble());
+            }
         }
 
         if (!layersSection.IsArray())
@@ -224,22 +224,24 @@ void NeuralNetwork<TDevice>::exportLayers(const helpers::JsonDocument& jsonDoc) 
 template <typename TDevice>
 void NeuralNetwork<TDevice>::exportPriors(const helpers::JsonDocument& jsonDoc) const
 {
-//    if (!jsonDoc->IsObject())
-//        throw std::runtime_error("JSON document root must be an object");
-//
-//    // create the layers array
-//    rapidjson::Value layersArray(rapidjson::kArrayType);
-//
-//    // create the layer objects
-//    for (size_t i = 0; i < m_layers.size(); ++i)
-//        m_layers[i]->exportLayer(&layersArray, &jsonDoc->GetAllocator());
-//
-//    // if the section already exists, we delete it first
-//    if (jsonDoc->HasMember("layers"))
-//        jsonDoc->RemoveMember("layers");
-//
-//    // add the section to the JSON document
-//    jsonDoc->AddMember("layers", layersArray, jsonDoc->GetAllocator());
+    if (!jsonDoc->IsObject())
+        throw std::runtime_error("JSON document root must be an object");
+
+    // create the layers array
+    rapidjson::Value priorArrays(rapidjson::kArrayType);
+    priorArrays.Reserve(m_priors.size(), jsonDoc->GetAllocator());
+    
+    for(int i=0;i<m_priors.size();i++)
+    {
+        priorArrays.PushBack(m_priors[i], jsonDoc->GetAllocator());
+    }
+
+    // if the section already exists, we delete it first
+    if (jsonDoc->HasMember("priors"))
+        jsonDoc->RemoveMember("priors");
+
+    // add the section to the JSON document
+    jsonDoc->AddMember("priors", priorArrays, jsonDoc->GetAllocator());
     return;
 }
 

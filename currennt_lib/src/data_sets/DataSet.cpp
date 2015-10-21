@@ -296,6 +296,11 @@ namespace data_sets {
 
         return v;
     }
+    
+    Cpu::real_vector DataSet::getPriors()
+    {
+        return priors;
+    }
 
     boost::shared_ptr<DataSetFraction> DataSet::_makeFractionTask(int firstSeqIdx)
     {
@@ -556,6 +561,15 @@ namespace data_sets {
                     seq->targetsBegin = m_cacheFile.tellp();
                     if (m_isClassificationData) {
                         Cpu::int_vector targets = internal::readNcArray<int>(ncid, "targetClasses", targetsBegin, seq->length);
+                        // calculate priors
+                        for(int i=0;i<targets.size();i++)
+                        {
+                            while(priors.size() <= targets[i])
+                            {
+                                priors.push_back(0.0);
+                            }
+                            priors[targets[i]] += 1.0; 
+                        }
                         m_cacheFile.write((const char*)targets.data(), sizeof(int) * targets.size());
                         assert (m_cacheFile.tellp() - seq->targetsBegin == seq->length * sizeof(int));
                     }
@@ -603,7 +617,20 @@ namespace data_sets {
         // sort sequences by length
         if (Configuration::instance().trainingMode())
             std::sort(m_sequences.begin(), m_sequences.end(), internal::comp_seqs);
+    
+        // priors normalization
+        double priors_sum = 0;
+        for(int i=0;i<priors.size();i++)
+        {
+            priors_sum += priors[i];
+        }
+        
+        for(int i=0;i<priors.size();i++)
+        {
+            priors[i] = log(priors[i] / priors_sum);
+        }        
     }
+    
 
     DataSet::~DataSet()
     {

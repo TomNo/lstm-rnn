@@ -51,7 +51,7 @@ private:
 
 public:
     std::vector<boost::shared_ptr<layers::Layer<TDevice> > > m_layers;
-    std::vector<double> m_priors;
+    Cpu::real_vector m_priors;
     
     /**
      * Creates the neural network from the process configuration

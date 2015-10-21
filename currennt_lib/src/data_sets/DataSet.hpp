@@ -55,6 +55,7 @@ namespace data_sets {
             std::streampos inputsBegin;
             std::streampos targetsBegin;
         };
+        Cpu::real_vector priors;
 
     private:
         void _nextFracThreadFn();
@@ -123,6 +124,8 @@ namespace data_sets {
          * @return True if the data set contains classification data
          */
         bool isClassificationData() const;
+        
+        Cpu::real_vector getPriors();
 
         /**
          * Check if the data set is empty
